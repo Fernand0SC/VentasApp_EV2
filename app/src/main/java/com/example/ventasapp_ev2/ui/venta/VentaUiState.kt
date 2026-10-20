@@ -22,6 +22,7 @@ data class VentaUiState(
     val clienteError: String? = null,
     val montoError: String? = null,
     val codigoError: String? = null,
+    val respaldoError: String? = null,
 
     // Estado de la pantalla
     val guardando: Boolean = false,

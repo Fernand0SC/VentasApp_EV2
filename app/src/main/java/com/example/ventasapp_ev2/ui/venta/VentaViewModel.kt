@@ -108,7 +108,11 @@ class VentaViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun onRespaldoChange(uri: String?) {
-        _estado.update { it.copy(respaldoUri = uri) }
+        _estado.update { it.copy(respaldoUri = uri, respaldoError = null) }
+    }
+
+    fun onRespaldoError(mensaje: String?) {
+        _estado.update { it.copy(respaldoError = mensaje) }
     }
 
     //Validaciones

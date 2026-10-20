@@ -54,6 +54,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.example.ventasapp_ev2.data.model.EstadoVenta
+import android.Manifest
+import android.content.pm.PackageManager
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.PhotoLibrary
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.ContextCompat
+import coil.compose.AsyncImage
+import com.example.ventasapp_ev2.utils.RespaldoUtils
+import kotlinx.coroutines.launch
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -63,6 +84,60 @@ fun VentaFormScreen(
     onVolver: () -> Unit
 ) {
     val estado by viewModel.estado.collectAsState()
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    // Ruta del archivo donde la cámara guardará la foto
+    var rutaFotoPendiente by rememberSaveable { mutableStateOf<String?>(null) }
+
+    //cámara
+    val camaraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { exito ->
+        val archivo = rutaFotoPendiente?.let { File(it) }
+        rutaFotoPendiente = null
+        if (archivo != null) {
+            if (!exito) {
+                archivo.delete()
+            } else {
+                val error = RespaldoUtils.validarArchivo(archivo)
+                if (error != null) {
+                    archivo.delete()
+                    viewModel.onRespaldoError(error)
+                } else {
+                    viewModel.onRespaldoChange(Uri.fromFile(archivo).toString())
+                }
+            }
+        }
+    }
+
+    fun abrirCamara() {
+        val archivo = RespaldoUtils.crearArchivo(context)
+        rutaFotoPendiente = archivo.absolutePath
+        camaraLauncher.launch(RespaldoUtils.uriParaCamara(context, archivo))
+    }
+
+    // Permiso de cámara en tiempo de ejecución
+    val permisoLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { concedido ->
+        if (concedido) abrirCamara()
+        else viewModel.onRespaldoError("Permiso de cámara denegado. Puedes usar la galería.")
+    }
+
+    fun onCamaraClick() {
+        val tienePermiso = ContextCompat.checkSelfPermission(
+            context, Manifest.permission.CAMERA
+        ) == PackageManager.PERMISSION_GRANTED
+        if (tienePermiso) abrirCamara() else permisoLauncher.launch(Manifest.permission.CAMERA)
+    }
+
+    val galeriaLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+        if (uri != null) {
+            scope.launch {
+                val resultado = RespaldoUtils.copiarDesdeGaleria(context, uri)
+                if (resultado.error != null) viewModel.onRespaldoError(resultado.error)
+                else viewModel.onRespaldoChange(resultado.uri)
+            }
+        }
+    }
 
     LaunchedEffect(ventaId) {
         if (ventaId == 0L) viewModel.nuevaVenta() else viewModel.cargarVenta(ventaId)
@@ -231,7 +306,7 @@ fun VentaFormScreen(
             )
 
 
-            // aquí se agregara los botones de cámara y galería
+            // Respaldo fotográfico (cámara o galería)
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -240,17 +315,73 @@ fun VentaFormScreen(
                     containerColor = MaterialTheme.colorScheme.surfaceContainerLow
                 )
             ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(Icons.Default.PhotoCamera, contentDescription = null)
-                    Column(modifier = Modifier.padding(start = 12.dp)) {
-                        Text("Respaldo fotográfico", style = MaterialTheme.typography.titleSmall)
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icons.Default.PhotoCamera, contentDescription = null)
+                        Column(modifier = Modifier.padding(start = 12.dp)) {
+                            Text("Respaldo fotográfico", style = MaterialTheme.typography.titleSmall)
+                            Text(
+                                if (estado.respaldoUri == null) "Sin respaldo adjunto" else "Respaldo adjunto",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+
+                    // Vista previa animada de la imagen adjunta
+                    AnimatedVisibility(visible = estado.respaldoUri != null) {
+                        AsyncImage(
+                            model = estado.respaldoUri,
+                            contentDescription = "Respaldo de la venta",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp)
+                                .height(180.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                        )
+                    }
+
+                    if (estado.editable) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = { onCamaraClick() },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Text("  Cámara")
+                            }
+                            OutlinedButton(
+                                onClick = {
+                                    galeriaLauncher.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                },
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Text("  Galería")
+                            }
+                        }
+                        if (estado.respaldoUri != null) {
+                            TextButton(onClick = { viewModel.onRespaldoChange(null) }) {
+                                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Text("  Quitar respaldo")
+                            }
+                        }
+                    }
+
+                    AnimatedVisibility(visible = estado.respaldoError != null) {
                         Text(
-                            if (estado.respaldoUri == null) "Sin respaldo adjunto" else "Respaldo adjunto",
+                            text = estado.respaldoError ?: "",
+                            color = MaterialTheme.colorScheme.error,
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            modifier = Modifier.padding(top = 8.dp)
                         )
                     }
                 }
