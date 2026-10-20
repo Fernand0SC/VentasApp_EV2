@@ -58,6 +58,7 @@ class VentaViewModel(app: Application) : AndroidViewModel(app) {
 
     // Carga una venta existente para consultarla o modificarla
     fun cargarVenta(id: Long) {
+        _estado.value = VentaUiState()
         viewModelScope.launch {
             val venta = repository.obtenerPorId(id) ?: return@launch
             // un vendedor solo puede abrir sus propias ventas

@@ -13,6 +13,7 @@ import androidx.navigation.navArgument
 import com.example.ventasapp_ev2.ui.login.LoginScreen
 import com.example.ventasapp_ev2.ui.menu.MenuScreen
 import com.example.ventasapp_ev2.ui.venta.ListaVentasScreen
+import com.example.ventasapp_ev2.ui.venta.VentaFormScreen
 import com.example.ventasapp_ev2.ui.venta.VentaViewModel
 
 @Composable
@@ -89,7 +90,11 @@ fun AppNavigation() {
         ) { backStackEntry ->
             val ventaId = backStackEntry.arguments?.getLong("ventaId") ?: 0L
 
-            Text(if (ventaId == 0L) "Formulario: nueva venta" else "Formulario: editar venta $ventaId")
+            VentaFormScreen(
+                ventaId = ventaId,
+                viewModel = ventaViewModel,
+                onVolver = { navController.popBackStack() }
+            )
         }
     }
 }
