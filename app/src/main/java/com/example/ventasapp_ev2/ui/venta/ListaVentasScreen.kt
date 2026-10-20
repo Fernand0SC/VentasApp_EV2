@@ -183,7 +183,7 @@ private fun VentaItem(venta: VentaEntity, onClick: () -> Unit) {
 
 
 @Composable
-private fun EstadoChip(estado: EstadoVenta) {
+fun EstadoChip(estado: EstadoVenta) {
     val colorFondo by animateColorAsState(
         targetValue = when (estado) {
             EstadoVenta.BORRADOR -> MaterialTheme.colorScheme.surfaceVariant

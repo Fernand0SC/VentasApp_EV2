@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.ventasapp_ev2.data.model.Perfil
+import androidx.compose.material.icons.filled.CheckCircle
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,6 +30,7 @@ fun MenuScreen(
     nombre: String,
     perfil: String,
     onIrAVentas: () -> Unit,
+    onIrARevision: () -> Unit,
     onCerrarSesion: () -> Unit
 ) {
     val perfilActual = Perfil.desde(perfil)
@@ -74,10 +76,19 @@ fun MenuScreen(
                     }
                 }
             } else {
-                Text(
-                    "La revisión y validación de ventas estará disponible en la siguiente etapa.",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Card(onClick = onIrARevision, modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        modifier = Modifier.padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        Icon(Icons.Default.CheckCircle, contentDescription = null)
+                        Column {
+                            Text("Ventas recibidas", style = MaterialTheme.typography.titleMedium)
+                            Text("Revisar, validar o rechazar las ventas enviadas", style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
             }
         }
     }

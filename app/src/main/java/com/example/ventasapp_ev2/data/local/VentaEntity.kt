@@ -20,5 +20,8 @@ data class VentaEntity(
     val estado: String,
     val observaciones: String = "",
     val fechaCreacion: Long,
-    val fechaActualizacion: Long
+    val fechaActualizacion: Long,
+    val observacionRevision: String? = null,
+    val revisadoPorId: Long? = null,
+    val fechaRevision: Long? = null
 )

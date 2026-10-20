@@ -1,7 +1,6 @@
 package com.example.ventasapp_ev2.ui.navigation
 
 import android.net.Uri
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -12,6 +11,9 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.example.ventasapp_ev2.ui.login.LoginScreen
 import com.example.ventasapp_ev2.ui.menu.MenuScreen
+import com.example.ventasapp_ev2.ui.revision.RevisionDetalleScreen
+import com.example.ventasapp_ev2.ui.revision.RevisionListaScreen
+import com.example.ventasapp_ev2.ui.revision.RevisionViewModel
 import com.example.ventasapp_ev2.ui.venta.ListaVentasScreen
 import com.example.ventasapp_ev2.ui.venta.VentaFormScreen
 import com.example.ventasapp_ev2.ui.venta.VentaViewModel
@@ -20,8 +22,8 @@ import com.example.ventasapp_ev2.ui.venta.VentaViewModel
 fun AppNavigation() {
     val navController = rememberNavController()
 
-
     val ventaViewModel: VentaViewModel = viewModel()
+    val revisionViewModel: RevisionViewModel = viewModel()
 
     NavHost(navController = navController, startDestination = "login") {
 
@@ -54,6 +56,7 @@ fun AppNavigation() {
                 nombre = nombre,
                 perfil = perfil,
                 onIrAVentas = { navController.navigate("lista/$usuarioId") },
+                onIrARevision = { navController.navigate("revision/$usuarioId") },
                 onCerrarSesion = {
                     navController.navigate("login") {
                         popUpTo(navController.graph.id) { inclusive = true }
@@ -62,7 +65,7 @@ fun AppNavigation() {
             )
         }
 
-        //Lista de ventas
+        //Lista de ventas (vendedor)
         composable(
             route = "lista/{usuarioId}",
             arguments = listOf(navArgument("usuarioId") { type = NavType.LongType })
@@ -80,7 +83,7 @@ fun AppNavigation() {
             )
         }
 
-        //Formulario
+        //Formulario (vendedor)
         composable(
             route = "form/{usuarioId}/{ventaId}",
             arguments = listOf(
@@ -93,6 +96,46 @@ fun AppNavigation() {
             VentaFormScreen(
                 ventaId = ventaId,
                 viewModel = ventaViewModel,
+                onVolver = { navController.popBackStack() }
+            )
+        }
+
+        //Ventas recibidas (encargado)
+        composable(
+            route = "revision/{usuarioId}",
+            arguments = listOf(navArgument("usuarioId") { type = NavType.LongType })
+        ) { backStackEntry ->
+            val usuarioId = backStackEntry.arguments?.getLong("usuarioId") ?: 0L
+
+            LaunchedEffect(usuarioId) { revisionViewModel.iniciarSesionDe(usuarioId) }
+
+            RevisionListaScreen(
+                viewModel = revisionViewModel,
+                onVentaClick = { ventaId ->
+                    navController.navigate("revision_detalle/$usuarioId/$ventaId")
+                },
+                onVolver = { navController.popBackStack() }
+            )
+        }
+
+        //Detalle y revisión de una venta (encargado)
+        composable(
+            route = "revision_detalle/{usuarioId}/{ventaId}",
+            arguments = listOf(
+                navArgument("usuarioId") { type = NavType.LongType },
+                navArgument("ventaId") { type = NavType.LongType }
+            )
+        ) { backStackEntry ->
+            val usuarioId = backStackEntry.arguments?.getLong("usuarioId") ?: 0L
+            val ventaId = backStackEntry.arguments?.getLong("ventaId") ?: 0L
+
+            LaunchedEffect(usuarioId, ventaId) {
+                revisionViewModel.iniciarSesionDe(usuarioId)
+                revisionViewModel.cargarDetalle(ventaId)
+            }
+
+            RevisionDetalleScreen(
+                viewModel = revisionViewModel,
                 onVolver = { navController.popBackStack() }
             )
         }
