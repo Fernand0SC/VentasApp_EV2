@@ -15,6 +15,7 @@ data class VentaUiState(
     val respaldoUri: String? = null,
     val estado: String = EstadoVenta.BORRADOR.name,
     val observaciones: String = "",
+    val observacionRevision: String? = null,
 
     // Errores por campo (null = campo válido)
     val tipoServicioError: String? = null,

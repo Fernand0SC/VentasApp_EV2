@@ -7,7 +7,7 @@ import androidx.room.RoomDatabase
 
 @Database(
     entities = [UsuarioEntity::class, VentaEntity::class, HistorialEntity::class],
-    version = 2, //para borrar datos de prueba
+    version = 3, //para borrar datos de prueba
     exportSchema = false
 )
 abstract class AppDatabase : RoomDatabase() {

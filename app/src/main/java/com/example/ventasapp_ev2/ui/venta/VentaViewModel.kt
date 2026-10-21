@@ -75,6 +75,7 @@ class VentaViewModel(app: Application) : AndroidViewModel(app) {
                 respaldoUri = venta.respaldoUri,
                 estado = venta.estado,
                 observaciones = venta.observaciones,
+                observacionRevision = venta.observacionRevision,
                 // Una venta validada ya no se puede modificar
                 editable = venta.estado != EstadoVenta.VALIDADA.name
             )

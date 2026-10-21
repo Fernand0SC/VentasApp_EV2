@@ -75,7 +75,7 @@ import coil.compose.AsyncImage
 import com.example.ventasapp_ev2.utils.RespaldoUtils
 import kotlinx.coroutines.launch
 import java.io.File
-
+import androidx.compose.material.icons.filled.Info
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VentaFormScreen(
@@ -177,6 +177,51 @@ fun VentaFormScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
+
+
+            // Observación del encargado cuando la venta fue observada o rechazada
+            val hayObservacion = estado.observacionRevision != null &&
+                    (estado.estado == EstadoVenta.OBSERVADA.name ||
+                            estado.estado == EstadoVenta.RECHAZADA.name)
+
+            AnimatedVisibility(visible = hayObservacion) {
+                val rechazada = estado.estado == EstadoVenta.RECHAZADA.name
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = if (rechazada) MaterialTheme.colorScheme.errorContainer
+                        else MaterialTheme.colorScheme.tertiaryContainer
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Icon(Icons.Default.Info, contentDescription = null)
+                        Column(modifier = Modifier.padding(start = 8.dp)) {
+                            Text(
+                                if (rechazada) "El encargado rechazó esta venta"
+                                else "El encargado solicitó una corrección",
+                                style = MaterialTheme.typography.titleSmall
+                            )
+                            Text(
+                                estado.observacionRevision.orEmpty(),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            if (!rechazada) {
+                                Text(
+                                    "Corrige los datos y vuelve a enviarla.",
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+
             // Aviso animado cuando la venta ya está validada
             AnimatedVisibility(visible = !estado.editable) {
                 Card(

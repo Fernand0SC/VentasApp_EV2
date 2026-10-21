@@ -177,6 +177,18 @@ private fun VentaItem(venta: VentaEntity, onClick: () -> Unit) {
                     )
                 }
             }
+
+            if (estado == EstadoVenta.OBSERVADA || estado == EstadoVenta.RECHAZADA) {
+                Text(
+                    text = if (estado == EstadoVenta.OBSERVADA)
+                        "Corrección solicitada: toca para ver el detalle"
+                    else "Rechazada: toca para ver el motivo",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+
         }
     }
 }
