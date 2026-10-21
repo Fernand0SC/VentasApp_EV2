@@ -1,5 +1,7 @@
 package com.example.ventasapp_ev2.data.repository
 
+import com.example.ventasapp_ev2.data.local.HistorialDao
+import com.example.ventasapp_ev2.data.local.HistorialEntity
 import com.example.ventasapp_ev2.data.local.UsuarioDao
 import com.example.ventasapp_ev2.data.local.VentaDao
 import com.example.ventasapp_ev2.data.local.VentaEntity
@@ -11,17 +13,23 @@ class ReglaNegocioException(mensaje: String) : Exception(mensaje)
 
 class RevisionRepository(
     private val ventaDao: VentaDao,
-    private val usuarioDao: UsuarioDao
+    private val usuarioDao: UsuarioDao,
+    private val historialDao: HistorialDao
 ) {
 
     fun ventasParaRevision(): Flow<List<VentaEntity>> = ventaDao.ventasParaRevision()
 
     fun observarVenta(id: Long): Flow<VentaEntity?> = ventaDao.observarPorId(id)
 
+    // historial de una venta del más reciente al más antiguo
+    fun historialDeVenta(ventaId: Long): Flow<List<HistorialEntity>> =
+        historialDao.historialDeVenta(ventaId)
+
     suspend fun nombreUsuario(id: Long): String =
         usuarioDao.obtenerPorId(id)?.nombre ?: "Desconocido"
 
-
+    //solo el encargado revisa, nunca su propia venta,
+    //y solo ventas en estado Recibida.
     suspend fun cambiarEstado(
         ventaId: Long,
         nuevoEstado: EstadoVenta,
@@ -56,6 +64,24 @@ class RevisionRepository(
                 revisadoPorId = responsable.id,
                 fechaRevision = ahora,
                 fechaActualizacion = ahora
+            )
+        )
+
+        val accion = when (nuevoEstado) {
+            EstadoVenta.VALIDADA -> "Venta validada"
+            EstadoVenta.RECHAZADA -> "Venta rechazada"
+            else -> "Corrección solicitada"
+        }
+        historialDao.insertar(
+            HistorialEntity(
+                ventaId = venta.id,
+                estadoAnterior = venta.estado,
+                estadoNuevo = nuevoEstado.name,
+                accion = accion,
+                usuarioId = responsable.id,
+                usuarioNombre = responsable.nombre,
+                fecha = ahora,
+                observacion = motivo.ifEmpty { null }
             )
         )
     }

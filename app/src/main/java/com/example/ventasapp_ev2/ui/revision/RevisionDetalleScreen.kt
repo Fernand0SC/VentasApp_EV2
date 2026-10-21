@@ -51,6 +51,9 @@ import com.example.ventasapp_ev2.data.model.EstadoVenta
 import com.example.ventasapp_ev2.ui.venta.EstadoChip
 import java.text.NumberFormat
 import java.util.Locale
+import com.example.ventasapp_ev2.data.local.HistorialEntity
+import java.text.SimpleDateFormat
+import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,6 +62,7 @@ fun RevisionDetalleScreen(
     onVolver: () -> Unit
 ) {
     val estado by viewModel.detalle.collectAsState()
+    val historial by viewModel.historial.collectAsState()
     val context = LocalContext.current
 
     // Confirmación visual y regreso a la lista
@@ -172,6 +176,7 @@ fun RevisionDetalleScreen(
                         }
                     }
 
+                    HistorialSeccion(historial)
                     // Avisos
                     AnimatedVisibility(visible = estado.esPropia) {
                         AvisoError("No puedes revisar tus propias ventas")
@@ -280,3 +285,49 @@ private fun AvisoError(mensaje: String) {
         }
     }
 }
+
+@Composable
+private fun HistorialSeccion(registros: List<HistorialEntity>) {
+    val formato = SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault())
+
+    Text("Historial de cambios", style = MaterialTheme.typography.titleMedium)
+
+    if (registros.isEmpty()) {
+        Text(
+            "Sin movimientos registrados",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    } else {
+        registros.forEach { registro ->
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                )
+            ) {
+                Column(modifier = Modifier.padding(12.dp)) {
+                    Text(registro.accion, style = MaterialTheme.typography.titleSmall)
+                    Text(
+                        "${etiquetaEstado(registro.estadoAnterior)} → ${etiquetaEstado(registro.estadoNuevo)}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        "${registro.usuarioNombre} · ${formato.format(Date(registro.fecha))}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    if (!registro.observacion.isNullOrBlank()) {
+                        Text(
+                            "Observación: ${registro.observacion}",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun etiquetaEstado(estado: String): String =
+    if (estado == "-") "Sin estado" else EstadoVenta.desde(estado).etiqueta

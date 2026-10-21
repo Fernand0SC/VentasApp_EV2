@@ -16,12 +16,14 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import com.example.ventasapp_ev2.data.local.HistorialEntity
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.flatMapLatest
 
 class RevisionViewModel(app: Application) : AndroidViewModel(app) {
 
     private val db = AppDatabase.getDatabase(app)
-    private val repository = RevisionRepository(db.ventaDao(), db.usuarioDao())
-
+    private val repository = RevisionRepository(db.ventaDao(), db.usuarioDao(), db.historialDao())
     private val _encargadoId = MutableStateFlow(0L)
 
     fun iniciarSesionDe(usuarioId: Long) {
@@ -35,9 +37,19 @@ class RevisionViewModel(app: Application) : AndroidViewModel(app) {
     private val _detalle = MutableStateFlow(RevisionDetalleUiState())
     val detalle: StateFlow<RevisionDetalleUiState> = _detalle.asStateFlow()
 
+
+    // Historial de la venta que se está viendo
+    private val _ventaIdActual = MutableStateFlow(0L)
+
+    @OptIn(ExperimentalCoroutinesApi::class)
+    val historial: StateFlow<List<HistorialEntity>> = _ventaIdActual
+        .flatMapLatest { repository.historialDeVenta(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     private var jobDetalle: Job? = null
 
     fun cargarDetalle(ventaId: Long) {
+        _ventaIdActual.value = ventaId
         jobDetalle?.cancel()
         _detalle.value = RevisionDetalleUiState()
         jobDetalle = viewModelScope.launch {

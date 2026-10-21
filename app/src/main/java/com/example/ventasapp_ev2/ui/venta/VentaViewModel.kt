@@ -23,7 +23,9 @@ import java.util.Locale
 
 class VentaViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val repository = VentaRepository(AppDatabase.getDatabase(app).ventaDao())
+    private val repository = AppDatabase.getDatabase(app).let { db ->
+        VentaRepository(db.ventaDao(), db.historialDao(), db.usuarioDao())
+    }
 
     // Opciones del campo tipo de convenio o servicio
     val tiposServicio = listOf(
