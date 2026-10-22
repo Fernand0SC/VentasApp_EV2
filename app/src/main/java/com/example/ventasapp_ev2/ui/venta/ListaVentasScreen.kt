@@ -108,7 +108,11 @@ fun ListaVentasScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(ventas, key = { it.id }) { venta ->
-                    VentaItem(venta = venta, onClick = { onVentaClick(venta.id) })
+                    VentaItem(
+                        venta = venta,
+                        onClick = { onVentaClick(venta.id) },
+                        modifier = Modifier.animateItem()
+                    )
                 }
             }
         }
@@ -116,13 +120,13 @@ fun ListaVentasScreen(
 }
 
 @Composable
-private fun VentaItem(venta: VentaEntity, onClick: () -> Unit) {
+private fun VentaItem(venta: VentaEntity, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val estado = EstadoVenta.desde(venta.estado)
     val formatoMonto = NumberFormat.getIntegerInstance(Locale("es", "CL"))
 
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {

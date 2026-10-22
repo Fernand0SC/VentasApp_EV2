@@ -1,6 +1,12 @@
 package com.example.ventasapp_ev2.ui.venta
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -57,6 +63,7 @@ import com.example.ventasapp_ev2.data.model.EstadoVenta
 import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -72,10 +79,16 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
+import com.example.ventasapp_ev2.ui.components.GuardadoExitosoOverlay
 import com.example.ventasapp_ev2.utils.RespaldoUtils
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
 import androidx.compose.material.icons.filled.Info
+
+// Tiempo (ms) que se muestra la confirmación animada antes de volver a la lista
+private const val DURACION_CONFIRMACION_MS = 1000L
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun VentaFormScreen(
@@ -143,12 +156,27 @@ fun VentaFormScreen(
         if (ventaId == 0L) viewModel.nuevaVenta() else viewModel.cargarVenta(ventaId)
     }
 
+    // Controla la confirmación animada que se muestra al guardar
+    var mostrarExito by rememberSaveable { mutableStateOf(false) }
+
+    // 1) El ViewModel avisa que se guardó: se muestra la animación y se consume el aviso
     LaunchedEffect(estado.guardadoExitosamente) {
         if (estado.guardadoExitosamente) {
+            mostrarExito = true
             viewModel.consumirGuardado()
+        }
+    }
+
+    // 2) Se deja ver la animación un momento y luego se vuelve a la lista
+    LaunchedEffect(mostrarExito) {
+        if (mostrarExito) {
+            delay(DURACION_CONFIRMACION_MS)
             onVolver()
         }
     }
+
+    // Mientras se ve la confirmación, el gesto "atrás" no hace nada (evita volver dos veces)
+    BackHandler(enabled = mostrarExito) { }
 
     val titulo = when {
         ventaId == 0L -> "Nueva venta"
@@ -156,318 +184,346 @@ fun VentaFormScreen(
         else -> "Editar venta"
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text(titulo) },
-                navigationIcon = {
-                    IconButton(onClick = onVolver) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                TopAppBar(
+                    title = { Text(titulo) },
+                    navigationIcon = {
+                        IconButton(onClick = onVolver) {
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Volver")
+                        }
                     }
-                }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .imePadding()
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
+                )
+            }
+        ) { padding ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .imePadding()
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
 
 
-            // Observación del encargado cuando la venta fue observada o rechazada
-            val hayObservacion = estado.observacionRevision != null &&
-                    (estado.estado == EstadoVenta.OBSERVADA.name ||
-                            estado.estado == EstadoVenta.RECHAZADA.name)
+                // Observación del encargado cuando la venta fue observada o rechazada
+                val hayObservacion = estado.observacionRevision != null &&
+                        (estado.estado == EstadoVenta.OBSERVADA.name ||
+                                estado.estado == EstadoVenta.RECHAZADA.name)
 
-            AnimatedVisibility(visible = hayObservacion) {
-                val rechazada = estado.estado == EstadoVenta.RECHAZADA.name
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = if (rechazada) MaterialTheme.colorScheme.errorContainer
-                        else MaterialTheme.colorScheme.tertiaryContainer
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.Top
+                AnimatedVisibility(visible = hayObservacion) {
+                    val rechazada = estado.estado == EstadoVenta.RECHAZADA.name
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (rechazada) MaterialTheme.colorScheme.errorContainer
+                            else MaterialTheme.colorScheme.tertiaryContainer
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
                     ) {
-                        Icon(Icons.Default.Info, contentDescription = null)
-                        Column(modifier = Modifier.padding(start = 8.dp)) {
-                            Text(
-                                if (rechazada) "El encargado rechazó esta venta"
-                                else "El encargado solicitó una corrección",
-                                style = MaterialTheme.typography.titleSmall
-                            )
-                            Text(
-                                estado.observacionRevision.orEmpty(),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            if (!rechazada) {
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Icon(Icons.Default.Info, contentDescription = null)
+                            Column(modifier = Modifier.padding(start = 8.dp)) {
                                 Text(
-                                    "Corrige los datos y vuelve a enviarla.",
-                                    style = MaterialTheme.typography.bodySmall
+                                    if (rechazada) "El encargado rechazó esta venta"
+                                    else "El encargado solicitó una corrección",
+                                    style = MaterialTheme.typography.titleSmall
                                 )
+                                Text(
+                                    estado.observacionRevision.orEmpty(),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+                                if (!rechazada) {
+                                    Text(
+                                        "Corrige los datos y vuelve a enviarla.",
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                }
                             }
                         }
                     }
                 }
-            }
 
 
-            // Aviso animado cuando la venta ya está validada
-            AnimatedVisibility(visible = !estado.editable) {
-                Card(
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.secondaryContainer
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                // Aviso animado cuando la venta ya está validada
+                AnimatedVisibility(visible = !estado.editable) {
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        ),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp)
                     ) {
-                        Icon(Icons.Default.Lock, contentDescription = null)
-                        Text(
-                            "  Esta venta está validada y no se puede modificar.",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                        Row(
+                            modifier = Modifier.padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(Icons.Default.Lock, contentDescription = null)
+                            Text(
+                                "  Esta venta está validada y no se puede modificar.",
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
                     }
                 }
-            }
 
-            //Tipo de convenio o servicio (lista desplegable)
-            var menuAbierto by remember { mutableStateOf(false) }
-            Box(modifier = Modifier.fillMaxWidth()) {
+                //Tipo de convenio o servicio (lista desplegable)
+                var menuAbierto by remember { mutableStateOf(false) }
+                Box(modifier = Modifier.fillMaxWidth()) {
+                    OutlinedTextField(
+                        value = estado.tipoServicio,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Tipo de convenio o servicio") },
+                        leadingIcon = { Icon(Icons.Default.Category, contentDescription = null) },
+                        trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
+                        isError = estado.tipoServicioError != null,
+                        supportingText = { Text(estado.tipoServicioError ?: "") },
+                        enabled = estado.editable,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                    // Capa transparente que abre el menú al tocar el campo
+                    if (estado.editable) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .padding(bottom = 20.dp)
+                                .clickable { menuAbierto = true }
+                        )
+                    }
+                    DropdownMenu(
+                        expanded = menuAbierto,
+                        onDismissRequest = { menuAbierto = false }
+                    ) {
+                        viewModel.tiposServicio.forEach { tipo ->
+                            DropdownMenuItem(
+                                text = { Text(tipo) },
+                                onClick = {
+                                    viewModel.onTipoServicioChange(tipo)
+                                    menuAbierto = false
+                                }
+                            )
+                        }
+                    }
+                }
+
+                //Fecha de operacion
                 OutlinedTextField(
-                    value = estado.tipoServicio,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Tipo de convenio o servicio") },
-                    leadingIcon = { Icon(Icons.Default.Category, contentDescription = null) },
-                    trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
-                    isError = estado.tipoServicioError != null,
-                    supportingText = { Text(estado.tipoServicioError ?: "") },
+                    value = estado.fechaOperacion,
+                    onValueChange = viewModel::onFechaChange,
+                    label = { Text("Fecha de operación (dd/MM/aaaa)") },
+                    leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
+                    singleLine = true,
+                    isError = estado.fechaError != null,
+                    supportingText = { Text(estado.fechaError ?: "") },
                     enabled = estado.editable,
                     modifier = Modifier.fillMaxWidth()
                 )
-                // Capa transparente que abre el menú al tocar el campo
-                if (estado.editable) {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .padding(bottom = 20.dp)
-                            .clickable { menuAbierto = true }
-                    )
-                }
-                DropdownMenu(
-                    expanded = menuAbierto,
-                    onDismissRequest = { menuAbierto = false }
-                ) {
-                    viewModel.tiposServicio.forEach { tipo ->
-                        DropdownMenuItem(
-                            text = { Text(tipo) },
-                            onClick = {
-                                viewModel.onTipoServicioChange(tipo)
-                                menuAbierto = false
-                            }
-                        )
-                    }
-                }
-            }
 
-            //Fecha de operacion
-            OutlinedTextField(
-                value = estado.fechaOperacion,
-                onValueChange = viewModel::onFechaChange,
-                label = { Text("Fecha de operación (dd/MM/aaaa)") },
-                leadingIcon = { Icon(Icons.Default.CalendarToday, contentDescription = null) },
-                singleLine = true,
-                isError = estado.fechaError != null,
-                supportingText = { Text(estado.fechaError ?: "") },
-                enabled = estado.editable,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            //Cliente ficticio
-            OutlinedTextField(
-                value = estado.cliente,
-                onValueChange = viewModel::onClienteChange,
-                label = { Text("Cliente (ficticio)") },
-                leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
-                singleLine = true,
-                isError = estado.clienteError != null,
-                supportingText = { Text(estado.clienteError ?: "") },
-                enabled = estado.editable,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            //Monto
-            OutlinedTextField(
-                value = estado.monto,
-                onValueChange = viewModel::onMontoChange,
-                label = { Text("Monto (ficticio)") },
-                leadingIcon = { Icon(Icons.Default.AttachMoney, contentDescription = null) },
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                singleLine = true,
-                isError = estado.montoError != null,
-                supportingText = { Text(estado.montoError ?: "") },
-                enabled = estado.editable,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-            //Código de autorización
-            OutlinedTextField(
-                value = estado.codigoAutorizacion,
-                onValueChange = viewModel::onCodigoChange,
-                label = { Text("Código de autorización (ficticio)") },
-                leadingIcon = { Icon(Icons.Default.ConfirmationNumber, contentDescription = null) },
-                singleLine = true,
-                isError = estado.codigoError != null,
-                supportingText = { Text(estado.codigoError ?: "") },
-                enabled = estado.editable,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-
-            OutlinedTextField(
-                value = estado.observaciones,
-                onValueChange = viewModel::onObservacionesChange,
-                label = { Text("Observaciones (opcional)") },
-                leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
-                minLines = 2,
-                maxLines = 4,
-                enabled = estado.editable,
-                modifier = Modifier.fillMaxWidth()
-            )
-
-
-            // Respaldo fotográfico (cámara o galería)
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                //Cliente ficticio
+                OutlinedTextField(
+                    value = estado.cliente,
+                    onValueChange = viewModel::onClienteChange,
+                    label = { Text("Cliente (ficticio)") },
+                    leadingIcon = { Icon(Icons.Default.Person, contentDescription = null) },
+                    singleLine = true,
+                    isError = estado.clienteError != null,
+                    supportingText = { Text(estado.clienteError ?: "") },
+                    enabled = estado.editable,
+                    modifier = Modifier.fillMaxWidth()
                 )
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.PhotoCamera, contentDescription = null)
-                        Column(modifier = Modifier.padding(start = 12.dp)) {
-                            Text("Respaldo fotográfico", style = MaterialTheme.typography.titleSmall)
+
+                //Monto
+                OutlinedTextField(
+                    value = estado.monto,
+                    onValueChange = viewModel::onMontoChange,
+                    label = { Text("Monto (ficticio)") },
+                    leadingIcon = { Icon(Icons.Default.AttachMoney, contentDescription = null) },
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    singleLine = true,
+                    isError = estado.montoError != null,
+                    supportingText = { Text(estado.montoError ?: "") },
+                    enabled = estado.editable,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                //Código de autorización
+                OutlinedTextField(
+                    value = estado.codigoAutorizacion,
+                    onValueChange = viewModel::onCodigoChange,
+                    label = { Text("Código de autorización (ficticio)") },
+                    leadingIcon = { Icon(Icons.Default.ConfirmationNumber, contentDescription = null) },
+                    singleLine = true,
+                    isError = estado.codigoError != null,
+                    supportingText = { Text(estado.codigoError ?: "") },
+                    enabled = estado.editable,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+
+                OutlinedTextField(
+                    value = estado.observaciones,
+                    onValueChange = viewModel::onObservacionesChange,
+                    label = { Text("Observaciones (opcional)") },
+                    leadingIcon = { Icon(Icons.Default.Edit, contentDescription = null) },
+                    minLines = 2,
+                    maxLines = 4,
+                    enabled = estado.editable,
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+
+                // Respaldo fotográfico (cámara o galería)
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 8.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+                    )
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Default.PhotoCamera, contentDescription = null)
+                            Column(modifier = Modifier.padding(start = 12.dp)) {
+                                Text("Respaldo fotográfico", style = MaterialTheme.typography.titleSmall)
+                                Text(
+                                    if (estado.respaldoUri == null) "Sin respaldo adjunto" else "Respaldo adjunto",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+
+                        // Vista previa animada de la imagen adjunta
+                        AnimatedVisibility(visible = estado.respaldoUri != null) {
+                            AsyncImage(
+                                model = estado.respaldoUri,
+                                contentDescription = "Respaldo de la venta",
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 12.dp)
+                                    .height(180.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                            )
+                        }
+
+                        if (estado.editable) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                OutlinedButton(
+                                    onClick = { onCamaraClick() },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Text("  Cámara")
+                                }
+                                OutlinedButton(
+                                    onClick = {
+                                        galeriaLauncher.launch(
+                                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                        )
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Text("  Galería")
+                                }
+                            }
+                            if (estado.respaldoUri != null) {
+                                TextButton(onClick = { viewModel.onRespaldoChange(null) }) {
+                                    Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Text("  Quitar respaldo")
+                                }
+                            }
+                        }
+
+                        AnimatedVisibility(visible = estado.respaldoError != null) {
                             Text(
-                                if (estado.respaldoUri == null) "Sin respaldo adjunto" else "Respaldo adjunto",
+                                text = estado.respaldoError ?: "",
+                                color = MaterialTheme.colorScheme.error,
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                modifier = Modifier.padding(top = 8.dp)
                             )
                         }
                     }
-
-                    // Vista previa animada de la imagen adjunta
-                    AnimatedVisibility(visible = estado.respaldoUri != null) {
-                        AsyncImage(
-                            model = estado.respaldoUri,
-                            contentDescription = "Respaldo de la venta",
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 12.dp)
-                                .height(180.dp)
-                                .clip(RoundedCornerShape(12.dp))
-                        )
-                    }
-
-                    if (estado.editable) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 12.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = { onCamaraClick() },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(Icons.Default.PhotoCamera, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Text("  Cámara")
-                            }
-                            OutlinedButton(
-                                onClick = {
-                                    galeriaLauncher.launch(
-                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                    )
-                                },
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Icon(Icons.Default.PhotoLibrary, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Text("  Galería")
-                            }
-                        }
-                        if (estado.respaldoUri != null) {
-                            TextButton(onClick = { viewModel.onRespaldoChange(null) }) {
-                                Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Text("  Quitar respaldo")
-                            }
-                        }
-                    }
-
-                    AnimatedVisibility(visible = estado.respaldoError != null) {
-                        Text(
-                            text = estado.respaldoError ?: "",
-                            color = MaterialTheme.colorScheme.error,
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 8.dp)
-                        )
-                    }
                 }
-            }
 
-            //Mensaje de error general
-            AnimatedVisibility(visible = estado.errorGeneral != null) {
-                Text(
-                    text = estado.errorGeneral ?: "",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            }
+                //Mensaje de error general
+                AnimatedVisibility(visible = estado.errorGeneral != null) {
+                    Text(
+                        text = estado.errorGeneral ?: "",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(bottom = 8.dp)
+                    )
+                }
 
-            //Botones de accion
-            if (estado.editable) {
-                // El borrador solo se ofrece mientras la venta aún es un borrador
-                if (estado.estado == EstadoVenta.BORRADOR.name) {
-                    OutlinedButton(
-                        onClick = { viewModel.guardar(enviar = false) },
+                //Botones de accion
+                if (estado.editable) {
+                    // El borrador solo se ofrece mientras la venta aún es un borrador
+                    if (estado.estado == EstadoVenta.BORRADOR.name) {
+                        OutlinedButton(
+                            onClick = { viewModel.guardar(enviar = false) },
+                            enabled = !estado.guardando,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Text("  Guardar borrador")
+                        }
+                    }
+                    Button(
+                        onClick = { viewModel.guardar(enviar = true) },
                         enabled = !estado.guardando,
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(Icons.Default.Save, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Text("  Guardar borrador")
-                    }
-                }
-                Button(
-                    onClick = { viewModel.guardar(enviar = true) },
-                    enabled = !estado.guardando,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (estado.guardando) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    } else {
-                        Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Text("  Enviar a revisión")
+                        // El contenido del botón cambia con una animación suave
+                        AnimatedContent(
+                            targetState = estado.guardando,
+                            transitionSpec = {
+                                (fadeIn(tween(150)) + scaleIn(initialScale = 0.8f)) togetherWith
+                                        fadeOut(tween(100))
+                            },
+                            label = "contenidoBotonEnviar"
+                        ) { guardando ->
+                            if (guardando) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        Icons.AutoMirrored.Filled.Send,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Text("  Enviar a revisión")
+                                }
+                            }
+                        }
                     }
                 }
             }
         }
+
+        // Confirmación animada de guardado, por encima de todo el formulario
+        GuardadoExitosoOverlay(
+            visible = mostrarExito,
+            mensaje = "¡Venta guardada!",
+            modifier = Modifier.fillMaxSize()
+        )
     }
 }

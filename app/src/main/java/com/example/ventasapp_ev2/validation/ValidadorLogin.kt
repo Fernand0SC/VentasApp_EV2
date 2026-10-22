@@ -8,7 +8,7 @@ data class ErroresLogin(
         get() = usuario == null && clave == null
 }
 
-/** Reglas de validación del inicio de sesión (Kotlin puro, sin Android). */
+
 object ValidadorLogin {
 
     const val CLAVE_MIN_CARACTERES = 4

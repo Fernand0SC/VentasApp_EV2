@@ -80,7 +80,11 @@ fun RevisionListaScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 items(ventas, key = { it.id }) { venta ->
-                    VentaRevisionCard(venta = venta, onClick = { onVentaClick(venta.id) })
+                    VentaRevisionCard(
+                        venta = venta,
+                        onClick = { onVentaClick(venta.id) },
+                        modifier = Modifier.animateItem()
+                    )
                 }
             }
         }
@@ -88,12 +92,12 @@ fun RevisionListaScreen(
 }
 
 @Composable
-private fun VentaRevisionCard(venta: VentaEntity, onClick: () -> Unit) {
+private fun VentaRevisionCard(venta: VentaEntity, onClick: () -> Unit, modifier: Modifier = Modifier) {
     val formatoMonto = NumberFormat.getIntegerInstance(Locale("es", "CL"))
 
     Card(
         onClick = onClick,
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {

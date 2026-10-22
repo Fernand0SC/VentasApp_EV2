@@ -5,10 +5,7 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
-/**
- * Resultado de validar el formulario de venta.
- * Un campo en null significa "válido"; un texto es el mensaje de error a mostrar.
- */
+
 data class ErroresVenta(
     val tipoServicio: String? = null,
     val fecha: String? = null,
@@ -21,10 +18,7 @@ data class ErroresVenta(
                 monto == null && codigo == null
 }
 
-/**
- * Reglas de validación del formulario de venta.
- * Kotlin puro: no usa Android ni Compose, por eso se puede probar con tests unitarios.
- */
+
 object ValidadorVenta {
 
     const val FORMATO_FECHA = "dd/MM/yyyy"
@@ -79,7 +73,7 @@ object ValidadorVenta {
         else -> null
     }
 
-    /** Valida todos los campos y devuelve los errores agrupados. */
+
     fun validar(
         tipoServicio: String,
         fecha: String,
