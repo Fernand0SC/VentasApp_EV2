@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.ventasapp_ev2.data.local.AppDatabase
 import com.example.ventasapp_ev2.data.local.UsuarioEntity
 import com.example.ventasapp_ev2.data.repository.AuthRepository
+import com.example.ventasapp_ev2.validation.ValidadorLogin
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,7 +20,7 @@ class LoginViewModel(app: Application) : AndroidViewModel(app) {
     private val _estado = MutableStateFlow(LoginUiState())
     val estado: StateFlow<LoginUiState> = _estado.asStateFlow()
 
-    //actualizar el estado y limpiar el error del campo
+    // actualizar el estado y limpiar el error del campo
     fun onUsuarioChange(valor: String) {
         _estado.update { it.copy(usuario = valor, usuarioError = null, errorGeneral = null) }
     }
@@ -28,16 +29,14 @@ class LoginViewModel(app: Application) : AndroidViewModel(app) {
         _estado.update { it.copy(clave = valor, claveError = null, errorGeneral = null) }
     }
 
+    // Las reglas viven en ValidadorLogin, el ViewModel solo las aplica al estado
     private fun validar(): Boolean {
         val e = _estado.value
-        val usuarioError = if (e.usuario.isBlank()) "Ingrese su usuario" else null
-        val claveError = when {
-            e.clave.isBlank() -> "Ingrese su contraseña"
-            e.clave.length < 4 -> "La contraseña debe tener al menos 4 caracteres"
-            else -> null
+        val errores = ValidadorLogin.validar(e.usuario, e.clave)
+        _estado.update {
+            it.copy(usuarioError = errores.usuario, claveError = errores.clave)
         }
-        _estado.update { it.copy(usuarioError = usuarioError, claveError = claveError) }
-        return usuarioError == null && claveError == null
+        return errores.esValido
     }
 
     fun iniciarSesion(onExito: (UsuarioEntity) -> Unit) {

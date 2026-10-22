@@ -7,6 +7,7 @@ import com.example.ventasapp_ev2.data.local.AppDatabase
 import com.example.ventasapp_ev2.data.local.VentaEntity
 import com.example.ventasapp_ev2.data.model.EstadoVenta
 import com.example.ventasapp_ev2.data.repository.VentaRepository
+import com.example.ventasapp_ev2.validation.ValidadorVenta
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -16,10 +17,6 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import java.text.ParseException
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 class VentaViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -35,8 +32,6 @@ class VentaViewModel(app: Application) : AndroidViewModel(app) {
         "Otros beneficios"
     )
 
-    private val formatoFecha = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-
     private val _usuarioId = MutableStateFlow(0L)
 
     fun iniciarSesionDe(usuarioId: Long) {
@@ -49,13 +44,13 @@ class VentaViewModel(app: Application) : AndroidViewModel(app) {
         .flatMapLatest { repository.ventasDeVendedor(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    //Estado del formulario
+    // Estado del formulario
     private val _estado = MutableStateFlow(VentaUiState())
     val estado: StateFlow<VentaUiState> = _estado.asStateFlow()
 
     // Prepara el formulario para registrar una venta nueva
     fun nuevaVenta() {
-        _estado.value = VentaUiState(fechaOperacion = formatoFecha.format(Date()))
+        _estado.value = VentaUiState(fechaOperacion = ValidadorVenta.formatearFecha())
     }
 
     // Carga una venta existente para consultarla o modificarla
@@ -82,7 +77,7 @@ class VentaViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    //Eventos de los campos
+    // Eventos de los campos
     fun onTipoServicioChange(valor: String) {
         _estado.update { it.copy(tipoServicio = valor, tipoServicioError = null) }
     }
@@ -118,69 +113,32 @@ class VentaViewModel(app: Application) : AndroidViewModel(app) {
         _estado.update { it.copy(respaldoError = mensaje) }
     }
 
-    //Validaciones
+    // Validaciones: las reglas viven en ValidadorVenta, el ViewModel solo las aplica al estado
     private fun validarCampos(): Boolean {
         val e = _estado.value
 
-        val tipoError = if (e.tipoServicio.isBlank()) "Seleccione el tipo de convenio o servicio" else null
-
-        val fechaError = when {
-            e.fechaOperacion.isBlank() -> "Ingrese la fecha de la operación"
-            !esFechaValida(e.fechaOperacion) -> "Use el formato dd/MM/aaaa"
-            esFechaFutura(e.fechaOperacion) -> "La fecha no puede ser futura"
-            else -> null
-        }
-
-        val clienteError = when {
-            e.cliente.isBlank() -> "Ingrese el nombre del cliente ficticio"
-            e.cliente.trim().length < 3 -> "El nombre debe tener al menos 3 caracteres"
-            else -> null
-        }
-
-        val monto = e.monto.toIntOrNull()
-        val montoError = when {
-            e.monto.isBlank() -> "Ingrese el monto"
-            monto == null -> "El monto debe ser numérico"
-            monto <= 0 -> "El monto debe ser mayor que 0"
-            monto > 10_000_000 -> "El monto no puede superar \$10.000.000"
-            else -> null
-        }
-
-        val codigoError = when {
-            e.codigoAutorizacion.isBlank() -> "Ingrese el código de autorización"
-            e.codigoAutorizacion.trim().length < 4 -> "El código debe tener al menos 4 caracteres"
-            else -> null
-        }
+        val errores = ValidadorVenta.validar(
+            tipoServicio = e.tipoServicio,
+            fecha = e.fechaOperacion,
+            cliente = e.cliente,
+            monto = e.monto,
+            codigo = e.codigoAutorizacion
+        )
 
         _estado.update {
             it.copy(
-                tipoServicioError = tipoError,
-                fechaError = fechaError,
-                clienteError = clienteError,
-                montoError = montoError,
-                codigoError = codigoError
+                tipoServicioError = errores.tipoServicio,
+                fechaError = errores.fecha,
+                clienteError = errores.cliente,
+                montoError = errores.monto,
+                codigoError = errores.codigo
             )
         }
 
-        return listOf(tipoError, fechaError, clienteError, montoError, codigoError).all { it == null }
+        return errores.esValido
     }
 
-    private fun esFechaValida(texto: String): Boolean {
-        if (texto.length != 10) return false
-        return try {
-            formatoFecha.isLenient = false
-            formatoFecha.parse(texto) != null
-        } catch (e: ParseException) {
-            false
-        }
-    }
-
-    private fun esFechaFutura(texto: String): Boolean {
-        val fecha = formatoFecha.parse(texto) ?: return false
-        return fecha.after(Date())
-    }
-
-    //Guardar
+    // Guardar
     fun guardar(enviar: Boolean) {
         if (!_estado.value.editable) return
         if (!validarCampos()) return
@@ -190,17 +148,17 @@ class VentaViewModel(app: Application) : AndroidViewModel(app) {
             val e = _estado.value
             val codigo = e.codigoAutorizacion.trim().uppercase()
 
-            //no se permiten códigos de autorización duplicados
+            // no se permiten códigos de autorización duplicados
             if (repository.codigoDuplicado(codigo, e.ventaId)) {
                 _estado.update {
-                    it.copy(guardando = false, codigoError = "Este código de autorización ya está registrado")
+                    it.copy(guardando = false, codigoError = ValidadorVenta.ERROR_CODIGO_DUPLICADO)
                 }
                 return@launch
             }
 
             val existente = if (e.ventaId != 0L) repository.obtenerPorId(e.ventaId) else null
 
-            //no modificar ventas ajenas ni ventas ya validadas
+            // no modificar ventas ajenas ni ventas ya validadas
             if (existente != null &&
                 (existente.vendedorId != _usuarioId.value ||
                         existente.estado == EstadoVenta.VALIDADA.name)
