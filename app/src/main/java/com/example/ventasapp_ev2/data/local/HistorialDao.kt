@@ -11,6 +11,9 @@ interface HistorialDao {
     @Insert
     suspend fun insertar(registro: HistorialEntity)
 
+    @Query("DELETE FROM historial WHERE ventaId = :ventaId")
+    suspend fun eliminarDeVenta(ventaId: Long)
+
     @Query("SELECT * FROM historial WHERE ventaId = :ventaId ORDER BY fecha DESC")
     fun historialDeVenta(ventaId: Long): Flow<List<HistorialEntity>>
 }

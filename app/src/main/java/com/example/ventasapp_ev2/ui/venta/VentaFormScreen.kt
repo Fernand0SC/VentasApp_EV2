@@ -62,8 +62,6 @@ import androidx.compose.ui.unit.dp
 import com.example.ventasapp_ev2.data.model.EstadoVenta
 import android.Manifest
 import android.content.pm.PackageManager
-import android.net.Uri
-import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -72,7 +70,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.TextButton
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
@@ -80,10 +77,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import coil.compose.AsyncImage
 import com.example.ventasapp_ev2.ui.components.GuardadoExitosoOverlay
-import com.example.ventasapp_ev2.utils.RespaldoUtils
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
-import java.io.File
 import androidx.compose.material.icons.filled.Info
 
 // Tiempo (ms) que se muestra la confirmación animada antes de volver a la lista
@@ -99,34 +93,20 @@ fun VentaFormScreen(
     val estado by viewModel.estado.collectAsState()
 
     val context = LocalContext.current
-    val scope = rememberCoroutineScope()
 
     // Ruta del archivo donde la cámara guardará la foto
     var rutaFotoPendiente by rememberSaveable { mutableStateOf<String?>(null) }
 
-    //cámara
+    //cámara: la pantalla solo lanza la cámara; el ViewModel valida y guarda la foto
     val camaraLauncher = rememberLauncherForActivityResult(ActivityResultContracts.TakePicture()) { exito ->
-        val archivo = rutaFotoPendiente?.let { File(it) }
+        viewModel.onFotoTomada(rutaFotoPendiente, exito)
         rutaFotoPendiente = null
-        if (archivo != null) {
-            if (!exito) {
-                archivo.delete()
-            } else {
-                val error = RespaldoUtils.validarArchivo(archivo)
-                if (error != null) {
-                    archivo.delete()
-                    viewModel.onRespaldoError(error)
-                } else {
-                    viewModel.onRespaldoChange(Uri.fromFile(archivo).toString())
-                }
-            }
-        }
     }
 
     fun abrirCamara() {
-        val archivo = RespaldoUtils.crearArchivo(context)
+        val archivo = viewModel.crearArchivoRespaldo()
         rutaFotoPendiente = archivo.absolutePath
-        camaraLauncher.launch(RespaldoUtils.uriParaCamara(context, archivo))
+        camaraLauncher.launch(viewModel.uriParaCamara(archivo))
     }
 
     // Permiso de cámara en tiempo de ejecución
@@ -143,13 +123,7 @@ fun VentaFormScreen(
     }
 
     val galeriaLauncher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        if (uri != null) {
-            scope.launch {
-                val resultado = RespaldoUtils.copiarDesdeGaleria(context, uri)
-                if (resultado.error != null) viewModel.onRespaldoError(resultado.error)
-                else viewModel.onRespaldoChange(resultado.uri)
-            }
-        }
+        if (uri != null) viewModel.onImagenGaleria(uri)
     }
 
     LaunchedEffect(ventaId) {
@@ -174,9 +148,6 @@ fun VentaFormScreen(
             onVolver()
         }
     }
-
-    // Mientras se ve la confirmación, el gesto "atrás" no hace nada (evita volver dos veces)
-    BackHandler(enabled = mostrarExito) { }
 
     val titulo = when {
         ventaId == 0L -> "Nueva venta"

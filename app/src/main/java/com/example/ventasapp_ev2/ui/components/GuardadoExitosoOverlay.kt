@@ -1,12 +1,10 @@
 package com.example.ventasapp_ev2.ui.components
 
 import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -26,11 +24,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.unit.dp
 
 
@@ -57,19 +53,11 @@ fun GuardadoExitosoOverlay(
                 ),
             contentAlignment = Alignment.Center
         ) {
-            // El check parte en tamaño 0 y crece con un resorte (efecto rebote)
-            val escala = remember { Animatable(0f) }
-            LaunchedEffect(Unit) {
-                escala.animateTo(
-                    targetValue = 1f,
-                    animationSpec = spring(
-                        dampingRatio = Spring.DampingRatioMediumBouncy,
-                        stiffness = Spring.StiffnessLow
-                    )
-                )
-            }
-
+            // La tarjeta aparece creciendo suavemente mientras el fondo se oscurece
             Card(
+                modifier = Modifier.animateEnterExit(
+                    enter = scaleIn(initialScale = 0.6f, animationSpec = tween(durationMillis = 250))
+                ),
                 shape = RoundedCornerShape(24.dp),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.surface
@@ -83,9 +71,7 @@ fun GuardadoExitosoOverlay(
                         imageVector = Icons.Default.CheckCircle,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier
-                            .size(72.dp)
-                            .scale(escala.value)
+                        modifier = Modifier.size(72.dp)
                     )
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(text = mensaje, style = MaterialTheme.typography.titleMedium)

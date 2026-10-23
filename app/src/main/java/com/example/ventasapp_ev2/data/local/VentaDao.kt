@@ -1,6 +1,7 @@
 package com.example.ventasapp_ev2.data.local
 
 import androidx.room.Dao
+import androidx.room.Delete
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
@@ -14,6 +15,9 @@ interface VentaDao {
 
     @Update
     suspend fun actualizar(venta: VentaEntity)
+
+    @Delete
+    suspend fun eliminar(venta: VentaEntity)
 
     @Query("SELECT * FROM ventas WHERE id = :id")
     suspend fun obtenerPorId(id: Long): VentaEntity?

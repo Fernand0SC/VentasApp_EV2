@@ -20,6 +20,12 @@ class VentaRepository(
 
     suspend fun obtenerPorId(id: Long): VentaEntity? = ventaDao.obtenerPorId(id)
 
+    // Elimina la venta junto con su historial
+    suspend fun eliminar(venta: VentaEntity) {
+        historialDao.eliminarDeVenta(venta.id)
+        ventaDao.eliminar(venta)
+    }
+
     suspend fun codigoDuplicado(codigo: String, excluirId: Long): Boolean =
         ventaDao.contarCodigo(codigo, excluirId) > 0
 

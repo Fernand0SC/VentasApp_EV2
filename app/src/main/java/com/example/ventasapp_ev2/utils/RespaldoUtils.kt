@@ -26,6 +26,13 @@ object RespaldoUtils {
     fun uriParaCamara(context: Context, archivo: File): Uri =
         FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", archivo)
 
+    // Borra del teléfono el archivo de respaldo de una venta eliminada
+    fun eliminarArchivo(uri: String?) {
+        val ruta = uri?.let { Uri.parse(it).path } ?: return
+        val archivo = File(ruta)
+        if (archivo.parentFile?.name == "respaldos") archivo.delete()
+    }
+
     // Valida una foto recién tomada y devuelve un mensaje de error o null si está bien
     fun validarArchivo(archivo: File): String? = when {
         !archivo.exists() || archivo.length() == 0L -> "No se pudo guardar la imagen"

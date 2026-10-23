@@ -19,7 +19,6 @@ import kotlinx.coroutines.launch
 import com.example.ventasapp_ev2.data.local.HistorialEntity
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.flatMapLatest
-import com.example.ventasapp_ev2.validation.ValidadorRevision
 
 class RevisionViewModel(app: Application) : AndroidViewModel(app) {
 
@@ -95,14 +94,10 @@ class RevisionViewModel(app: Application) : AndroidViewModel(app) {
             _detalle.update { it.copy(errorGeneral = "No puedes revisar tus propias ventas") }
             return
         }
-
-
-        val errorObservacion = ValidadorRevision.validarObservacion(
-            observacion = actual.observacion,
-            obligatoria = nuevoEstado != EstadoVenta.VALIDADA
-        )
-        if (errorObservacion != null) {
-            _detalle.update { it.copy(observacionError = errorObservacion) }
+        if (nuevoEstado != EstadoVenta.VALIDADA && actual.observacion.trim().length < 5) {
+            _detalle.update {
+                it.copy(observacionError = "Indica el motivo (mínimo 5 caracteres)")
+            }
             return
         }
 
