@@ -11,37 +11,30 @@ Aplicación Android desarrollada para la asignatura **DSY1105 – Desarrollo de 
 
 ## Descripción
 
-Producto Mínimo Viable que permite a los vendedores registrar ventas desde su teléfono y a la persona encargada revisarlas, validarlas o devolverlas con observaciones. Reemplaza el proceso manual de fotografías por mensajería y planillas por un registro centralizado, con estados y trazabilidad.
+Producto Mínimo Viable que permite a los vendedores registrar ventas desde su teléfono, con su respaldo fotográfico, y consultarlas o modificarlas mientras no estén validadas. Reemplaza el proceso manual de fotografías por mensajería y planillas por un registro centralizado y persistente.
 
-## Funcionalidades implementadas
+**Todos los datos son ficticios**: no se usan clientes, comprobantes ni montos reales, y la app no se conecta a sistemas externos.
 
-**General**
+## Funcionalidades de la Evaluación Parcial 2
 
-- Inicio de sesión con cuentas de prueba y control de acceso por perfil (Vendedor / Encargado).
-- Claves almacenadas como hash (SHA-256), no como texto visible.
-- Menú principal distinto según el perfil.
-- Transiciones animadas entre pantallas.
-
-**Perfil vendedor**
-
-- Lista de ventas propias, actualizada automáticamente al registrar o modificar.
-- Formulario de venta (crear y editar) con: tipo de convenio o servicio, fecha, cliente ficticio, monto, código de autorización y observaciones.
-- Validaciones con error visible e ícono en cada campo: obligatorios, fecha válida y no futura, monto numérico mayor que 0 y código de autorización no duplicado.
-- Guardado como **Borrador** o envío como **Recibida**.
-- Respaldo fotográfico ficticio mediante **cámara** o **galería**, con restricción de tipo (JPG, PNG, WebP) y tamaño máximo de 8 MB.
+- Inicio de sesión con cuentas de prueba y menú principal.
+- Navegación entre las pantallas Login → Menú → Lista de ventas → Formulario, con transiciones animadas.
+- **Lista de ventas** almacenadas localmente, con código, tipo de servicio, monto y estado, actualizada automáticamente al registrar o modificar.
+- **Formulario de venta** (crear y modificar) con: tipo de convenio o servicio, fecha, cliente ficticio, monto, código de autorización y observaciones.
+- **Validaciones** con error visible e ícono en cada campo: campos obligatorios, fecha válida, monto numérico mayor que 0 y código de autorización no duplicado. La lógica de validación está en el ViewModel y en validadores independientes de la interfaz.
+- Estado inicial de la venta como **Borrador** o **Recibida**.
+- **Persistencia local con Room**: las ventas se conservan al cerrar y reiniciar la aplicación.
+- **Recursos nativos**: respaldo fotográfico ficticio mediante la **cámara** o la **galería**, con restricción de tipo (JPG, PNG, WebP) y tamaño máximo de 8 MB. La imagen queda vinculada a la venta.
 - Las ventas validadas quedan en solo lectura.
-- Visualización de la observación del encargado en ventas observadas o rechazadas.
 
-**Perfil encargado**
+## Funcionalidades adicionales
 
-- Lista de ventas recibidas.
-- Detalle de cada venta con sus antecedentes y respaldo fotográfico.
-- Acciones: **validar**, **rechazar** y **solicitar corrección**, con observación obligatoria al rechazar o corregir.
-- Regla de negocio: no se puede revisar una venta propia ni una venta que no esté en estado Recibida.
+Adelantos del caso completo, que no forman parte de la calificación de esta evaluación:
 
-**Trazabilidad**
-
-- Historial de cambios por venta: acción realizada, estado anterior y nuevo, usuario responsable, fecha y hora, y observación.
+- Perfil **encargado**: lista de ventas recibidas, detalle con respaldo fotográfico y acciones de validar, rechazar o solicitar corrección (con observación obligatoria).
+- Historial de cambios por venta (acción, estados, usuario, fecha y observación).
+- Visualización de la observación del encargado para el vendedor.
+- Claves almacenadas como hash (SHA-256).
 
 ## Arquitectura
 
@@ -53,7 +46,7 @@ app/src/main/java/com/example/ventasapp_ev2/
 │   ├── local/        Entidades, DAOs y AppDatabase (Room)
 │   ├── model/        Enumeraciones de dominio (Perfil, EstadoVenta)
 │   └── repository/   Repositorios (acceso a datos y reglas de negocio)
-├── validation/       Validadores de login, venta y revisión (lógica pura, con pruebas unitarias)
+├── validation/       Validadores de login, venta y revisión (lógica pura, independiente de la interfaz)
 ├── ui/
 │   ├── components/   Componentes reutilizables
 │   ├── login/        Pantalla, estado y ViewModel de inicio de sesión
@@ -75,22 +68,19 @@ app/src/main/java/com/example/ventasapp_ev2/
 - Navigation Compose
 - Recursos nativos: cámara y galería de imágenes
 - Coil (visualización de imágenes)
-- JUnit (pruebas unitarias de validaciones)
 
 ## Cómo ejecutar el proyecto
 
 1. Clonar el repositorio:
 
-   ```bash
+```bash
    git clone https://github.com/Fernand0SC/VentasApp_EV2.git
-   ```
+```
 
 2. Abrir la carpeta en **Android Studio**.
 3. Esperar a que termine la sincronización de Gradle (*Sync Project with Gradle Files*).
 4. Ejecutar la app en un emulador o en un teléfono Android (mínimo Android 7.0, API 24).
 5. Aceptar el permiso de cámara cuando la app lo solicite.
-
-Para ejecutar las pruebas unitarias: `./gradlew test` (o clic derecho sobre la carpeta `test` → *Run Tests*).
 
 ## Cuentas de prueba (ficticias)
 
@@ -101,11 +91,11 @@ Para ejecutar las pruebas unitarias: `./gradlew test` (o clic derecho sobre la c
 
 ## Flujo de prueba sugerido
 
-1. Entrar como **vendedor**, crear una venta con respaldo fotográfico y enviarla.
-2. Cerrar sesión y entrar como **encargado**.
-3. Abrir la venta en **Ventas recibidas** y validarla, rechazarla o solicitar corrección.
-4. Revisar el **historial de cambios** al final del detalle.
-5. Volver a entrar como vendedor y revisar el estado y la observación de la venta.
+1. Entrar como **vendedor** y crear una venta con respaldo fotográfico (cámara o galería).
+2. Guardarla como borrador o enviarla, y comprobar que aparece en la lista.
+3. Abrirla, modificar algún dato y guardar.
+4. Cerrar y reabrir la app: las ventas siguen en la lista.
+5. (Adicional) Entrar como **encargado**, revisar la venta y consultar su historial.
 
 ## Planificación
 
