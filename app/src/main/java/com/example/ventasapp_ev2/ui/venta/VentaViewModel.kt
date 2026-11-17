@@ -30,14 +30,6 @@ class VentaViewModel(app: Application) : AndroidViewModel(app) {
         VentaRepository(db.ventaDao(), db.historialDao(), db.usuarioDao())
     }
 
-    // Opciones del campo tipo de convenio o servicio
-    val tiposServicio = listOf(
-        "Clínica dental",
-        "Servicio automotriz",
-        "Servicio veterinario",
-        "Otros beneficios"
-    )
-
     private val formatoFecha = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
 
     private val _usuarioId = MutableStateFlow(0L)
@@ -169,7 +161,12 @@ class VentaViewModel(app: Application) : AndroidViewModel(app) {
     private fun validarCampos(): Boolean {
         val e = _estado.value
 
-        val tipoError = if (e.tipoServicio.isBlank()) "Seleccione el tipo de convenio o servicio" else null
+        val tipoError = when {
+            e.tipoServicio.isBlank() -> "Ingrese el tipo de convenio o servicio"
+            e.tipoServicio.trim().length < 3 -> "Debe tener al menos 3 caracteres"
+            e.tipoServicio.trim().length > 50 -> "No puede superar los 50 caracteres"
+            else -> null
+        }
 
         val fechaError = when {
             e.fechaOperacion.isBlank() -> "Ingrese la fecha de la operación"
@@ -262,7 +259,7 @@ class VentaViewModel(app: Application) : AndroidViewModel(app) {
             val venta = VentaEntity(
                 id = e.ventaId,
                 vendedorId = _usuarioId.value,
-                tipoServicio = e.tipoServicio,
+                tipoServicio = e.tipoServicio.trim(),
                 fechaOperacion = e.fechaOperacion,
                 cliente = e.cliente.trim(),
                 monto = e.monto.toInt(),

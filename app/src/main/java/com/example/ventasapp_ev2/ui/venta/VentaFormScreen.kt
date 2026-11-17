@@ -7,7 +7,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,7 +22,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Category
@@ -37,8 +35,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -53,7 +49,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -245,45 +240,19 @@ fun VentaFormScreen(
                     }
                 }
 
-                //Tipo de convenio o servicio (lista desplegable)
-                var menuAbierto by remember { mutableStateOf(false) }
-                Box(modifier = Modifier.fillMaxWidth()) {
-                    OutlinedTextField(
-                        value = estado.tipoServicio,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Tipo de convenio o servicio") },
-                        leadingIcon = { Icon(Icons.Default.Category, contentDescription = null) },
-                        trailingIcon = { Icon(Icons.Default.ArrowDropDown, contentDescription = null) },
-                        isError = estado.tipoServicioError != null,
-                        supportingText = { Text(estado.tipoServicioError ?: "") },
-                        enabled = estado.editable,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    // Capa transparente que abre el menú al tocar el campo
-                    if (estado.editable) {
-                        Box(
-                            modifier = Modifier
-                                .matchParentSize()
-                                .padding(bottom = 20.dp)
-                                .clickable { menuAbierto = true }
-                        )
-                    }
-                    DropdownMenu(
-                        expanded = menuAbierto,
-                        onDismissRequest = { menuAbierto = false }
-                    ) {
-                        viewModel.tiposServicio.forEach { tipo ->
-                            DropdownMenuItem(
-                                text = { Text(tipo) },
-                                onClick = {
-                                    viewModel.onTipoServicioChange(tipo)
-                                    menuAbierto = false
-                                }
-                            )
-                        }
-                    }
-                }
+                //Tipo de convenio o servicio (texto libre)
+                OutlinedTextField(
+                    value = estado.tipoServicio,
+                    onValueChange = viewModel::onTipoServicioChange,
+                    label = { Text("Tipo de convenio o servicio") },
+                    placeholder = { Text("Ej: Clínica dental, Servicio automotriz...") },
+                    leadingIcon = { Icon(Icons.Default.Category, contentDescription = null) },
+                    singleLine = true,
+                    isError = estado.tipoServicioError != null,
+                    supportingText = { Text(estado.tipoServicioError ?: "") },
+                    enabled = estado.editable,
+                    modifier = Modifier.fillMaxWidth()
+                )
 
                 //Fecha de operacion
                 OutlinedTextField(
