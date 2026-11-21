@@ -3,6 +3,7 @@ package com.example.ventasapp_ev2.data.repository
 import com.example.ventasapp_ev2.data.local.HistorialDao
 import com.example.ventasapp_ev2.data.local.HistorialEntity
 import com.example.ventasapp_ev2.data.local.UsuarioDao
+import com.example.ventasapp_ev2.data.local.UsuarioEntity
 import com.example.ventasapp_ev2.data.local.VentaDao
 import com.example.ventasapp_ev2.data.local.VentaEntity
 import com.example.ventasapp_ev2.data.model.EstadoVenta
@@ -18,6 +19,8 @@ class RevisionRepository(
 ) {
 
     fun ventasParaRevision(): Flow<List<VentaEntity>> = ventaDao.ventasParaRevision()
+
+    fun vendedores(): Flow<List<UsuarioEntity>> = usuarioDao.vendedores()
 
     fun observarVenta(id: Long): Flow<VentaEntity?> = ventaDao.observarPorId(id)
 

@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.ventasapp_ev2.data.local.AppDatabase
+import com.example.ventasapp_ev2.data.local.UsuarioEntity
 import com.example.ventasapp_ev2.data.local.VentaEntity
 import com.example.ventasapp_ev2.data.model.EstadoVenta
 import com.example.ventasapp_ev2.data.repository.ReglaNegocioException
@@ -13,6 +14,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -30,9 +32,40 @@ class RevisionViewModel(app: Application) : AndroidViewModel(app) {
         _encargadoId.value = usuarioId
     }
 
-    // Lista de ventas enviadas
-    val ventas: StateFlow<List<VentaEntity>> = repository.ventasParaRevision()
+    // Filtros de la lista (buscar por código; filtrar por estado, vendedor y fecha)
+    private val _filtros = MutableStateFlow(RevisionFiltros())
+    val filtros: StateFlow<RevisionFiltros> = _filtros.asStateFlow()
+
+    // Lista de ventas enviadas, con los filtros aplicados
+    val ventas: StateFlow<List<VentaEntity>> =
+        combine(repository.ventasParaRevision(), _filtros) { lista, f ->
+            lista.filter { venta ->
+                (f.codigo.isBlank() ||
+                        venta.codigoAutorizacion.contains(f.codigo.trim(), ignoreCase = true)) &&
+                        (f.estado == null || venta.estado == f.estado.name) &&
+                        (f.vendedorId == null || venta.vendedorId == f.vendedorId) &&
+                        (f.fecha.isBlank() || venta.fechaOperacion.contains(f.fecha.trim()))
+            }
+        }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val vendedores: StateFlow<List<UsuarioEntity>> = repository.vendedores()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    fun onCodigoFiltroChange(valor: String) {
+        _filtros.update { it.copy(codigo = valor) }
+    }
+
+    fun onEstadoFiltroChange(valor: EstadoVenta?) {
+        _filtros.update { it.copy(estado = valor) }
+    }
+
+    fun onVendedorFiltroChange(valor: Long?) {
+        _filtros.update { it.copy(vendedorId = valor) }
+    }
+
+    fun onFechaFiltroChange(valor: String) {
+        _filtros.update { it.copy(fecha = valor) }
+    }
 
     private val _detalle = MutableStateFlow(RevisionDetalleUiState())
     val detalle: StateFlow<RevisionDetalleUiState> = _detalle.asStateFlow()

@@ -1,6 +1,7 @@
 package com.example.ventasapp_ev2.ui.revision
 
 import com.example.ventasapp_ev2.data.local.VentaEntity
+import com.example.ventasapp_ev2.data.model.EstadoVenta
 
 data class RevisionDetalleUiState(
     val cargando: Boolean = true,
@@ -12,4 +13,11 @@ data class RevisionDetalleUiState(
     val procesando: Boolean = false,
     val errorGeneral: String? = null,
     val mensajeExito: String? = null
+)
+
+data class RevisionFiltros(
+    val codigo: String = "",
+    val estado: EstadoVenta? = null,
+    val vendedorId: Long? = null,
+    val fecha: String = ""
 )
