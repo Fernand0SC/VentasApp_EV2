@@ -12,14 +12,15 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-class LoginViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val repository = AuthRepository(AppDatabase.getDatabase(app).usuarioDao())
+class LoginViewModel @JvmOverloads constructor(
+    app: Application,
+    private val repository: AuthRepository = AuthRepository(AppDatabase.getDatabase(app).usuarioDao())
+) : AndroidViewModel(app) {
 
     private val _estado = MutableStateFlow(LoginUiState())
     val estado: StateFlow<LoginUiState> = _estado.asStateFlow()
 
-    //actualizar el estado y limpiar el error del campo
     fun onUsuarioChange(valor: String) {
         _estado.update { it.copy(usuario = valor, usuarioError = null, errorGeneral = null) }
     }
